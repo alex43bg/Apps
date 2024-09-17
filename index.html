@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Renaming</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2B2A33;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #ffffff;
+            margin-bottom: 40px;
+        }
+        .container {
+            background-color: #202124;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            text-align: center;
+            max-width: 1000px;
+            width: 100%;
+            border: 1px solid #413f3f;
+        }
+        input[type='file'] {
+            display: none;
+        }
+        .custom-file-upload {
+            padding: 10px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            background-color: #F2C202;
+            color: #2f2e2e;
+            font-size: 16px;
+            border: none;
+            transition: background-color 0.3s;
+            float: right; 
+        }
+        .custom-file-upload:hover {
+            background-color: #3AC872;
+        }
+        .checkbox-group {
+            margin: 10px 0;
+            text-align: left;
+        }
+        .checkbox-group label {
+            display: block;
+            margin: 5px 0;
+            color: #b0b0b0;
+        }
+        .checkbox-group input[type='text'] {
+            width: 100%;
+            margin-top: 10px;
+            padding: 5px;
+            background-color: #22273c;
+            border: 1px solid #5d5858;
+            color: #ffffff;
+        }
+        .replace-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .replace-group input {
+            width: 48%;
+        }
+        button {
+            margin: 10px 0;
+            padding: 10px 20px;
+            border: none;
+            background-color: #A827A8;
+            color: rgb(217, 213, 213);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            float: right; 
+        }
+        button:hover {
+            background-color: #3AC872;
+            color: rgb(47, 47, 47);
+        }
+        #fileList {
+            text-align: left;
+            margin-top: 20px;
+            color: #b0b0b0;
+        }
+        #output {
+            margin-top: 20px;
+        }
+        a {
+            display: block;
+            margin: 5px 0;
+            color: #80bdff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        ::placeholder {
+            color: #888888;
+        }
+        .Mt {
+            margin-top: 40px;
+        }
+        .Mb {
+            margin-top: 10px;
+        }
+        .Padding_all {
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #5d5858;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+</head>
+<body class='Padding_all'>
+    <h1>File Renaming</h1>
+    <div class="container">
+        <label class="custom-file-upload">
+            <input type="file" id="fileInput" multiple />
+            Add Files
+        </label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="addIndex" /> Add Sequential Number</label>
+            <label><input type="checkbox" id="removeNumbers" /> Remove Numbers</label>
+            <label><input type="checkbox" id="removeSpecialChars" /> Remove Special Characters</label>
+            <label><input type="checkbox" id="removeLetters" /> Remove Letters (except extension)</label>
+            <div class="Mt">
+                <input class="Mt" type="text" id="customRemoveInput" placeholder="Enter characters to remove" />
+                <label><input type="checkbox" id="customRemove" /> Remove entered characters from name</label>
+            </div>
+            <div class="Mt">
+                <input type="text" id="addTextInput" placeholder="Enter text to add" />
+                <label><input type="checkbox" id="addText" /> Add text to file name</label>
+            </div>
+            <div class="Mt">
+                <div class="replace-group">
+                    <input type="text" id="replaceFromInput" placeholder="Character to replace" />
+                    <input type="text" id="replaceToInput" placeholder="New character" />
+                </div>
+                <label><input type="checkbox" id="replaceText" /> Replace character</label>
+            </div>
+        </div>
+        <button onclick="processFiles()">Process Files</button>
+        <div id="fileList"></div>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        function updateFileList() {
+            const fileInput = document.getElementById('fileInput');
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+
+            if (fileInput.files.length > 0) {
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = `
+                    <th>Original Name</th>
+                    <th>Renamed Name</th>
+                `;
+                thead.appendChild(headerRow);
+
+                Array.from(fileInput.files).forEach(file => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${file.name}</td>
+                        <td id="renamed-${file.name}">Renamed name will appear after processing</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                fileList.appendChild(table);
+            } else {
+                fileList.textContent = 'Please select files.';
+            }
+        }
+
+        function renameFile(file, index) {
+            const removeNumbers = document.getElementById('removeNumbers').checked;
+            const removeSpecialChars = document.getElementById('removeSpecialChars').checked;
+            const removeLetters = document.getElementById('removeLetters').checked;
+            const customRemove = document.getElementById('customRemove').checked;
+            const customRemoveValue = document.getElementById('customRemoveInput').value;
+            const addText = document.getElementById('addText').checked;
+            const addTextValue = document.getElementById('addTextInput').value;
+            const addIndex = document.getElementById('addIndex').checked;
+            const replaceText = document.getElementById('replaceText').checked;
+            const replaceFromValue = document.getElementById('replaceFromInput').value;
+            const replaceToValue = document.getElementById('replaceToInput').value;
+
+            let newFileName = file.name;
+            const extensionIndex = newFileName.lastIndexOf('.');
+            const baseName = extensionIndex > -1 ? newFileName.slice(0, extensionIndex) : newFileName;
+            const extension = extensionIndex > -1 ? newFileName.slice(extensionIndex) : '';
+
+            let baseNameModified = baseName;
+
+            if (removeNumbers) {
+                baseNameModified = baseNameModified.replace(/\d+/g, '');
+            }
+            if (removeSpecialChars) {
+                baseNameModified = baseNameModified.replace(/[^\w\s-]/g, '');
+            }
+            if (removeLetters) {
+                baseNameModified = baseNameModified.replace(/[a-zA-Z]+/g, '');
+            }
+            if (customRemove) {
+                baseNameModified = baseNameModified.split('').filter(char => !customRemoveValue.includes(char)).join('');
+            }
+            if (addText) {
+                baseNameModified += addTextValue;
+            }
+            if (replaceText && replaceFromValue !== '') {
+                baseNameModified = baseNameModified.split(replaceFromValue).join(replaceToValue);
+            }
+            if (addIndex) {
+                baseNameModified += '_' + (index + 1);
+            }
+
+            return baseNameModified + extension;
+        }
+
+        function processFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const output = document.getElementById('output');
+            const zip = new JSZip();
+
+            if (fileInput.files.length === 0) {
+                alert('Please select files for processing.');
+                return;
+            }
+
+            Array.from(fileInput.files).forEach((file, index) => {
+                const newFileName = renameFile(file, index);
+
+                zip.file(newFileName, file);
+
+                const renamedCell = document.getElementById('renamed-' + file.name);
+                if (renamedCell) {
+                    renamedCell.textContent = newFileName;
+                }
+            });
+
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(content);
+                downloadLink.download = 'renamed_files.zip';
+                downloadLink.textContent = 'Download Renamed Files (ZIP)';
+                output.innerHTML = '';
+                output.appendChild(downloadLink);
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', updateFileList);
+    </script>
+</body>
+</html>
